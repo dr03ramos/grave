@@ -11,13 +11,16 @@ int tempo = 5;
 
 // Define o objeto do temporizador
 unsigned long contador;
+bool sentido = 0;
 
 // salva dados na EEPROM
 void inicializa_leitura_memoria() {
     Serial.println("Fazendo leitura...");
 
     // faz leitura da eeprom
-    contador = EEPROM.read(0);
+    // contador = EEPROM.read(0);
+
+    contador = 50;
 
     Serial.print("Número do contador: ");
     Serial.println(contador);
@@ -39,10 +42,7 @@ void gira_motor(int velocidade) {
     }
     // Se a velocidade for zero, o motor para
     else if (velocidade == 0) {
-        digitalWrite(IN1, LOW);
-        digitalWrite(IN2, LOW);
-        digitalWrite(IN3, LOW);
-        digitalWrite(IN4, LOW);
+        para_motor();
     }
     // Se a velocidade for negativa, o motor gira em outro sentido
     else if (velocidade < 0) {
@@ -53,6 +53,30 @@ void gira_motor(int velocidade) {
     }
 }
 
+void para_motor() {
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, LOW);
+}
+
+void informa_serial(int IbarraO, int contador, int sentido) {
+    Serial.print("IbarraO: ");
+    Serial.print(IbarraO);
+    Serial.print(" | contador: ");
+    Serial.print(contador);
+    Serial.print(" | sentido: ");
+    Serial.println(sentido);
+    Serial.print(IN1);
+    Serial.print(" | ");
+    Serial.print(IN2);
+    Serial.print(" | ");
+    Serial.print(IN3);
+    Serial.print(" | ");
+    Serial.print(IN4);
+    Serial.println();
+}
+
 void setup() {
     // Define os pinos como saída
     pinMode(IN1, OUTPUT);
@@ -60,33 +84,44 @@ void setup() {
     pinMode(IN3, OUTPUT);
     pinMode(IN4, OUTPUT);
     pinMode(IbarraO, INPUT);
+
+    inicializa_leitura_memoria();
+
+    // Inicia a comunicação serial
+    Serial.begin(9600);
 }
 
 void loop() {
+    int velocidade = 1;
 
     if (digitalRead(IbarraO) == HIGH) {
-        contador = 1000;
-        if (contador == 0) {
-            // Para o motor
-            digitalWrite(IN1, 0);
-            digitalWrite(IN2, 0);
-            digitalWrite(IN3, 0);
-            digitalWrite(IN4, 0);
-        } else {
-            gira_descer();
-        }
-    } else {
-        contador = 0;
-        if (contador >= 1000) {
-            // Para o motor
-            digitalWrite(IN1, 0);
-            digitalWrite(IN2, 0);
-            digitalWrite(IN3, 0);
-            digitalWrite(IN4, 0);
-        } else {
-            gira_subir();
-        }
+        gira_motor(velocidade);
     }
+    else {
+        para_motor();
+    }
+
+    // contador
+    if (sentido == 0) {
+        if (contador < 100) {
+            contador++;
+        }
+        else {
+            sentido = 1;
+        }
+        velocidade = 1;
+    }
+    else {
+        if (contador > 0) {
+            contador--;
+        }
+        else {
+            sentido = 0;
+        }
+        velocidade = -1;
+    }
+    
+    informa_serial(digitalRead(IbarraO), contador, sentido);
 }
 /*
 //Pinos de conexao do modulo TCS230  
