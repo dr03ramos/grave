@@ -1,13 +1,13 @@
 #include <EEPROM.h>
 #include <Servo.h>
-#include <Stepper.h>
+#include <AFMotor.h>
 
 // DECLARAÇÕES
 // Número de passos por revolução do motor de passo
 const int stepsPerRevolution = 200;
 
 // Instância da biblioteca Stepper
-Stepper myStepper(stepsPerRevolution, 8, 9, 10, 11);
+AF_Stepper motor(stepsPerRevolution, 2);
 
 // Pinos de conexao do modulo TCS230 de cores 
 const int s0 = 22;
@@ -35,13 +35,13 @@ int atualPosZ = 0;
 int novaPosZ = 0;
 
 bool sentidoZ = 0;
-int velocidade_z_rpm = 60;
+int velocidade_z_rpm = 350;
 
 // Definição dos servo motores
 Servo servomotorelo1;
 Servo servomotorelo2;
-const int pinoServoMotorElo1 = 5;
-const int pinoServoMotorElo2 = 6;
+const int pinoServoMotorElo1 = 10;
+const int pinoServoMotorElo2 = 11;
 
 // Definição do servo motor da garra
 Servo servomotorgarra;
@@ -57,11 +57,11 @@ void move_motorpasso(int pulsos) {
 
     // sentido horario
     if sentidoZ == 0 {
-        myStepper.step(stepsPerRevolution*pulsos);
+        motor.step(stepsPerRevolution*pulsos, FORWARD, MICROSTEP);
     }
     // sentido anti-horario
     else {
-        myStepper.step(stepsPerRevolution*pulsos*-1);
+        motor.step(stepsPerRevolution*pulsos, BACKWARD, MICROSTEP);
     }
     delayMicroseconds(500);
 }
@@ -221,7 +221,7 @@ void setup() {
     // Inicia a comunicação serial
     Serial.begin(9600);
 
-    myStepper.setSpeed(velocidade_z_rpm); // RPM
+    motor.setSpeed(velocidade_z_rpm); // RPM
 
     // Inicia os servos motores maiores
     servomotorelo1.attach(pinoServoMotorElo1);
