@@ -1,64 +1,30 @@
-//Programa: Ponte H L298N com motor de passo
-//Autor: Arduino e Cia
-//Conexoes modulo - Arduino
-int IN1 = 8;
-int IN2 = 9;
-int IN3 = 10;
-int IN4 = 11;
+// Include the Arduino Stepper Library
+#include <Stepper.h>
 
-// Define o tempo de cada passo do motor
-int tempo = 50;
+// Number of steps per output rotation
+const int stepsPerRevolution = 200;
 
-// Define o objeto do temporizador
-unsigned long contador;
+// Create Instance of Stepper library
+Stepper myStepper(stepsPerRevolution, 8, 9, 10, 11);
+
 
 void setup()
 {
-  // Define os pinos como saída
-  pinMode(IN1, OUTPUT);
-  pinMode(IN2, OUTPUT);
-  pinMode(IN3, OUTPUT);
-  pinMode(IN4, OUTPUT);
-  
-  // Define o tempo de início do temporizador
-  contador = 0;
+	// set the speed at 60 rpm:
+	myStepper.setSpeed(60);
+	// initialize the serial port:
+	Serial.begin(9600);
 }
 
-void loop()
+void loop() 
 {
-  // Verifica se o tempo de 5 segundos já passou
-  if (contador >= 100000) {
-    // Para o motor
-    digitalWrite(IN1, 0);
-    digitalWrite(IN2, 0);
-    digitalWrite(IN3, 0);
-    digitalWrite(IN4, 0);
-  } else {
-    // Faz o motor girar em passos
-    // Passo 4
-    digitalWrite(IN1, 1);
-    digitalWrite(IN2, 0);
-    digitalWrite(IN3, 1);
-    digitalWrite(IN4, 0);
-    delay(tempo);
-    // Passo 3
-    digitalWrite(IN1, 0);
-    digitalWrite(IN2, 1);
-    digitalWrite(IN3, 1);
-    digitalWrite(IN4, 0);
-    delay(tempo);
-    // Passo 2
-    digitalWrite(IN1, 0);
-    digitalWrite(IN2, 1);
-    digitalWrite(IN3, 0);
-    digitalWrite(IN4, 1);
-    delay(tempo);
-    // Passo 1
-    digitalWrite(IN1, 1);
-    digitalWrite(IN2, 0);
-    digitalWrite(IN3, 0);
-    digitalWrite(IN4, 1);
-    delay(tempo);  
-    contador++;
-  }
+	// step one revolution in one direction:
+	Serial.println("clockwise");
+	myStepper.step(stepsPerRevolution);
+	delay(500);
+
+	// step one revolution in the other direction:
+	Serial.println("counterclockwise");
+	myStepper.step(-stepsPerRevolution);
+	delay(500);
 }

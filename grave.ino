@@ -1,12 +1,13 @@
 #include <EEPROM.h>
 #include <Servo.h>
+#include <Stepper.h>
 
 // DECLARAÇÕES
-// Pinos da ponte H motor de passo (TODO: substituir por driver)
-const int IN1 = 8;
-const int IN2 = 9;
-const int IN3 = 10;
-const int IN4 = 11;
+// Número de passos por revolução do motor de passo
+const int stepsPerRevolution = 200;
+
+// Instância da biblioteca Stepper
+Stepper myStepper(stepsPerRevolution, 8, 9, 10, 11);
 
 // Pinos de conexao do modulo TCS230 de cores 
 const int s0 = 22;
@@ -34,10 +35,7 @@ int atualPosZ = 0;
 int novaPosZ = 0;
 
 bool sentidoZ = 0;
-int velocidade_z = 1;
-
-const int pinoStep 32;
-const int pinoDir 35;
+int velocidade_z_rpm = 60;
 
 // Definição dos servo motores
 Servo servomotorelo1;
@@ -50,33 +48,8 @@ Servo servomotorgarra;
 const int pinoServoMotorGarra = 13;
 int posicaoServoMotorGarra = 0;
 
-// Define o tempo de cada passo do motor
-int tempo = 5;
-
-// Define o objeto do temporizador
-unsigned long contador;
 
 // FUNÇÕES
-// salva dados na EEPROM (remover)
-void inicializa_leitura_memoria() {
-    Serial.println("Fazendo leitura...");
-
-    // faz leitura da eeprom
-    // contador = EEPROM.read(0);
-
-    contador = 50;
-
-    Serial.print("Número do contador: ");
-    Serial.println(contador);
-}
-
-void atualiza_leitura_memoria() {
-    // salvar o valor do contador na posição zero (remover)
-    int endereco_EEPROM = 0;
-    int valor_EEPROM1 = contador;
-    EEPROM.update(endereco_EEPROM, valor_EEPROM1);
-}
-
 // Função para movimentar o motor de passo do eixo Z
 // em um determinado número de pulsos
 void move_motorpasso(int pulsos) {
@@ -84,43 +57,46 @@ void move_motorpasso(int pulsos) {
 
     // sentido horario
     if sentidoZ == 0 {
-        digitalWrite(pinoDir, LOW);
+        myStepper.step(stepsPerRevolution*pulsos);
     }
     // sentido anti-horario
     else {
-        digitalWrite(pinoDir, HIGH);
+        myStepper.step(stepsPerRevolution*pulsos*-1);
     }
-
-    for (int x = 0; x < (pulsos * 4); x++) {
-        digitalWrite(pinoStep, HIGH);
-        delayMicroseconds(700 / velocidade_z);
-        digitalWrite(pinoStep, LOW);
-        delayMicroseconds(700 / velocidade_z);
-    }
-
+    delayMicroseconds(500);
 }
 
 // Função que lê o sensor de cores, modulo TCS230
 // Ainda não implementada
-void sensor_cor() {
+void detectacores() {
     //Rotina que le o valor das cores  
     digitalWrite(s2, LOW);
     digitalWrite(s3, LOW);
     //count OUT, pRed, RED  
     red = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);
+    digitalWrite(s2, LOW);
     digitalWrite(s3, HIGH);
     //count OUT, pBLUE, BLUE  
     blue = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);
-    digitalWrite(s2, HIGH);
-    //count OUT, pGreen, GREEN  
-    green = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);
+
+    char retorno = "x";
+    while (retorno != "y" && digitalRead(IbarraO) == HIGH) {
+        //Verifica se a cor vermelha foi detectada  
+        if (red < blue && red < 100) {
+            return "a";
+        }
+        //Verifica se a cor azul foi detectada  
+        else if (blue < red && blue < green) {
+            return "v";
+        }
+    }
 }
 
 // Função que calcula o ângulo de cada motor
 // com base na posição x e y
 void sistema_coordenadas(float x, float y) {
-    int L1 = 90; // Largura do primeiro braço
-    int L2 = 90; // Largura do segundo braço
+    int L1 = 120; // Largura do primeiro braço
+    int L2 = 150; // Largura do segundo braço
 
     double tempAngY = acos((sq(x) + sq(y) - sq(L1) - sq(L2)) / (2 * L1 * L2));
     if (x < 0 & y < 0) {
@@ -226,6 +202,14 @@ void lidando_com_x_y(int x, int y, int z) {
     antigaAngY = novaAngY;
 }
 
+void garra(int abreoufecha) {
+    if (abreoufecha == 1) {
+        servomotorgarra.write(0);
+    } else if (abreoufecha == 0) {
+        servomotorgarra.write(180);
+    }
+}
+
 void setup() {
     // Define os pinos como saída
     pinMode(IN1, OUTPUT);
@@ -234,10 +218,10 @@ void setup() {
     pinMode(IN4, OUTPUT);
     pinMode(IbarraO, INPUT);
 
-    inicializa_leitura_memoria(); // ideia: não usar motor de passo, definir o ponto zero manualmente antes de ligar a máquina
-
     // Inicia a comunicação serial
     Serial.begin(9600);
+
+    myStepper.setSpeed(velocidade_z_rpm); // RPM
 
     // Inicia os servos motores maiores
     servomotorelo1.attach(pinoServoMotorElo1);
@@ -246,15 +230,35 @@ void setup() {
 }
 
 void loop() {
-    if (digitalRead(IbarraO) == HIGH) {
-        move_motorpasso();
-        sentido = 1;
-    } else {
-        sentido = 0;
-    }
+    // funciona se o interruptor está ligado
+    // se detecta azul ou vermelho, ele executa o motor
+    // manda o motor pegar a peça na área do sensor e levar para um destino
+    // os destinos são diferentes para as duas cores
+    // sobe o motor e volta para o ponto inicial
 
-    informa_serial(digitalRead(IbarraO), contador, sentido, velocidade);
-    delay(300);
+    // se o interruptor estiver ligado
+    if (digitalRead(IbarraO) == 1) {
+        // se detectar azul ou vermelho
+        if detectacores() == 'a' || detectacores() == 'v' {
+            // abre a garra
+            garra(0);
+            // leva o braço até o ponto do sensor
+            lidando_com_x_y(200, 0, 0);
+            // fecha a garra
+            garra(1);
+            // leva o braço até o ponto de destino
+            if (detectacores() == 'a') {
+                lidando_com_x_y(0, 0, 0);
+            } else if (detectacores() == 'v') {
+                lidando_com_x_y(0, 200, 0);
+            }
+            // abre a garra
+            garra(0);
+            // sobe o braço
+            lidando_com_x_y(100, 100, 200);
+
+        }
+    }        
 }
 
 // Função para cuspir informações na serial
