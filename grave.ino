@@ -11,9 +11,10 @@ AF_Stepper motor(stepsPerRevolution, 2);
 
 // Pinos de conexao do modulo TCS230 de cores 
 const int s0 = 22;
-const int s1 = 23;
-const int s2 = 24;
-const int s3 = 25;
+const int s1 = 24;
+const int s2 = 26;
+const int s3 = 28;
+const int out = 30;
 
 // Pino do interruptor
 const int IbarraO = 7;
@@ -237,7 +238,7 @@ void loop() {
     // sobe o motor e volta para o ponto inicial
 
     // se o interruptor estiver ligado
-    if (digitalRead(IbarraO) == 1) {
+    if (/*digitalRead(IbarraO)*/ 1 == 1) {
         // se detectar azul ou vermelho
         if detectacores() == 'a' || detectacores() == 'v' {
             // abre a garra
