@@ -85,10 +85,13 @@ void color()
   digitalWrite(s3, LOW);  
   //count OUT, pRed, RED  
   red = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);  
+  Serial.println(String(digitalRead(s2)) + " | " + String(digitalRead(s3)) + " | " + String(red));
   digitalWrite(s3, HIGH);  
   //count OUT, pBLUE, BLUE  
   blue = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);  
+Serial.println(String(digitalRead(s2)) + " | " + String(digitalRead(s3)) + " | " + String(blue));
   digitalWrite(s2, HIGH);  
   //count OUT, pGreen, GREEN  
   green = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);  
+Serial.println(String(digitalRead(s2)) + " | " + String(digitalRead(s3)) + " | " + String(green));
 }

@@ -18,6 +18,11 @@ const int s2 = 26;
 const int s3 = 28;
 const int out = 30;
 
+// Variaveis que armazenam o valor das cores  
+int red = 0;  
+int green = 0;  
+int blue = 0;  
+
 // Pino do interruptor
 const int IbarraO = 7;
 
@@ -68,43 +73,62 @@ void move_motorpasso(int pulsos) {
     delayMicroseconds(500);
 }
 
-// Função que lê o sensor de cores, modulo TCS230
-// Ainda não implementada
-char detecta_cores() {
-    int red = 0;
-    int green = 0;
-    int blue = 0;
-    char retorno = "x";
-    Serial.println("Detectando cor...");
-    while (retorno != "y" && digitalRead(IbarraO) == HIGH) {
-        //Rotina que le o valor das cores  
-        digitalWrite(s2, LOW);
-        digitalWrite(s3, LOW);
-        //count OUT, pRed, RED  
-        red = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);
-        digitalWrite(s3, HIGH);
-        //count OUT, pBLUE, BLUE  
-        blue = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);
-        digitalWrite(s2, HIGH);
-        //count OUT, pGreen, GREEN  
-        green = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);
+  //Rotina que le o valor das cores  
+void color()  
+{  
+  digitalWrite(s2, LOW);  
+  digitalWrite(s3, LOW);  
+  //count OUT, pRed, RED  
+  red = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);  
+    Serial.println(String(digitalRead(s2)) + " | " + String(digitalRead(s3)) + " | " + String(red));
 
-        //Verifica se a cor vermelha foi detectada  
-        if (red < blue && red < green && red < 100) {
-            retorno = "v";
-            Serial.println("Vermelho detectado");
-        }
-        //Verifica se a cor azul foi detectada  
-        else if (blue < red && blue < green) {
-            retorno = "a";
-            Serial.println("Azul detectado");
-        }
-        //Verifica se a cor verde foi detectada  
-        else if (green < red && green < blue) {
-            retorno = "x";
-        }
-        return retorno;
+  digitalWrite(s3, HIGH);  
+  //count OUT, pBLUE, BLUE  
+  blue = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);  
+    Serial.println(String(digitalRead(s2)) + " | " + String(digitalRead(s3)) + " | " + String(blue));
+  digitalWrite(s2, HIGH);  
+  //count OUT, pGreen, GREEN  
+  green = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);  
+    Serial.println(String(digitalRead(s2)) + " | " + String(digitalRead(s3)) + " | " + String(green));
+}
+
+// Função que lê o sensor de cores, modulo TCS230
+int detecta_cores() {
+    int retorno = 0;
+    Serial.println("Detectando cor...");
+    while (retorno == 0 && /*digitalRead(IbarraO)*/ HIGH == HIGH) {
+  color(); //Chama a rotina que le as cores  
+  //Mostra no serial monitor os valores detectados  
+  Serial.print("Vermelho :");  
+  Serial.print(red, DEC);  
+  Serial.print(" Verde : ");  
+  Serial.print(green, DEC);  
+  Serial.print(" Azul : ");  
+  Serial.print(blue, DEC);  
+  Serial.println();  
+  //Verifica se a cor vermelha foi detectada  
+  if (red < blue && red < green && red < 100)  
+  {  
+   Serial.println("Vermelho");  
+   retorno = 1;
+  }  
+  //Verifica se a cor azul foi detectada  
+  else if (blue < red && blue < green)   
+  {  
+   Serial.println("Azul");  
+   retorno = 2;
+  }  
+  //Verifica se a cor verde foi detectada  
+  else if (green < red && green < blue)  
+  {  
+   Serial.println("Verde");  
+   retorno = 0;
+  }  
+  Serial.println();  
+  //Aguarda 2 segundos, apaga os leds e reinicia o processo  
+  delay(2000);   
     }
+    return retorno;
     Serial.println("Saindo da deteccao de cor...");
 }
 
@@ -243,6 +267,9 @@ void setup() {
     pinMode(s3, OUTPUT);
     pinMode(out, INPUT);
 
+      digitalWrite(s0, HIGH);  
+  digitalWrite(s1, LOW);  
+
     // Inicia a comunicação serial
     Serial.begin(9600);
 
@@ -266,7 +293,9 @@ void loop() {
     // se o interruptor estiver ligado
     if ( /*digitalRead(IbarraO)*/ 1 == 1) {
         // se detectar azul ou vermelho
-        if (detecta_cores() == 'a' || detecta_cores() == 'v') {
+        int cor = detecta_cores();
+        Serial.println("Detecção de cor: " + String(cor));
+        if (cor != 0) {
             Serial.println("Uma cor foi detectada.");
             // abre a garra
             garra(0);
@@ -275,10 +304,10 @@ void loop() {
             // fecha a garra
             garra(1);
             // leva o braço até o ponto de destino
-            if (detecta_cores() == 'a') {
+            if (cor == 2) {
                 lidando_com_x_y(0, 0, 0);
                 Serial.println("Peça azul jogada na caixa.");
-            } else if (detecta_cores() == 'v') {
+            } else if (cor == 1) {
                 lidando_com_x_y(0, 200, 0);
                 Serial.println("Peça vermelha jogada na caixa.");
             }
