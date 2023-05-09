@@ -1,5 +1,7 @@
 #include <EEPROM.h>
+
 #include <Servo.h>
+
 #include <AFMotor.h>
 
 // DECLARAÇÕES
@@ -49,7 +51,6 @@ Servo servomotorgarra;
 const int pinoServoMotorGarra = 13;
 int posicaoServoMotorGarra = 0;
 
-
 // FUNÇÕES
 // Função para movimentar o motor de passo do eixo Z
 // em um determinado número de pulsos
@@ -57,40 +58,54 @@ void move_motorpasso(int pulsos) {
     // motor de passo usando driver
 
     // sentido horario
-    if sentidoZ == 0 {
-        motor.step(stepsPerRevolution*pulsos, FORWARD, MICROSTEP);
+    if (sentidoZ == 0) {
+        motor.step(stepsPerRevolution * pulsos, FORWARD, MICROSTEP);
     }
     // sentido anti-horario
     else {
-        motor.step(stepsPerRevolution*pulsos, BACKWARD, MICROSTEP);
+        motor.step(stepsPerRevolution * pulsos, BACKWARD, MICROSTEP);
     }
     delayMicroseconds(500);
 }
 
 // Função que lê o sensor de cores, modulo TCS230
 // Ainda não implementada
-void detectacores() {
-    //Rotina que le o valor das cores  
-    digitalWrite(s2, LOW);
-    digitalWrite(s3, LOW);
-    //count OUT, pRed, RED  
-    red = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);
-    digitalWrite(s2, LOW);
-    digitalWrite(s3, HIGH);
-    //count OUT, pBLUE, BLUE  
-    blue = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);
-
+char detecta_cores() {
+    int red = 0;
+    int green = 0;
+    int blue = 0;
     char retorno = "x";
+    Serial.println("Detectando cor...");
     while (retorno != "y" && digitalRead(IbarraO) == HIGH) {
+        //Rotina que le o valor das cores  
+        digitalWrite(s2, LOW);
+        digitalWrite(s3, LOW);
+        //count OUT, pRed, RED  
+        red = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);
+        digitalWrite(s3, HIGH);
+        //count OUT, pBLUE, BLUE  
+        blue = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);
+        digitalWrite(s2, HIGH);
+        //count OUT, pGreen, GREEN  
+        green = pulseIn(out, digitalRead(out) == HIGH ? LOW : HIGH);
+
         //Verifica se a cor vermelha foi detectada  
-        if (red < blue && red < 100) {
-            return "a";
+        if (red < blue && red < green && red < 100) {
+            retorno = "v";
+            Serial.println("Vermelho detectado");
         }
         //Verifica se a cor azul foi detectada  
         else if (blue < red && blue < green) {
-            return "v";
+            retorno = "a";
+            Serial.println("Azul detectado");
         }
+        //Verifica se a cor verde foi detectada  
+        else if (green < red && green < blue) {
+            retorno = "x";
+        }
+        return retorno;
     }
+    Serial.println("Saindo da deteccao de cor...");
 }
 
 // Função que calcula o ângulo de cada motor
@@ -146,44 +161,49 @@ int sistema_z(int diff_z) {
 // Função para movimentar todos os eixos para uma
 // determinada posição x, y e z tendo como base a posição atual (antiga)
 void lidando_com_x_y(int x, int y, int z) {
+    Serial.println("Movendo garra para a posição: " + String(x) + ", " + String(y) + ", " + String(z));
+
     sistema_coordenadas(x, y);
+
+    Serial.println("Ângulos definidos.");
 
     // nova posição do eixo Z
     novaPosZ = z;
-    int quantPassosZ = sistema_z(ABS(z - atualPosZ));
+    int quantPassosZ = sistema_z(abs(z - atualPosZ));
 
     if (novaPosZ < atualPosZ) {
         sentidoZ = 1;
+        Serial.println("Desce.");
     } else if (novaPosZ > atualPosZ) {
         sentidoZ = 0;
+        Serial.println("Sobe.");
     }
 
     // se a nova posição do eixo Z for maior
     if (novaPosZ > atualPosZ) {
-        move_motorpasso(ABS(quantPassosZ));
+        Serial.println("Movendo motor de passo.");
+        move_motorpasso(abs(quantPassosZ));
     }
-
+    Serial.println("Movendo motores servo grandes.");
     // movimentação eixo x e y
-    if (novaAngX > antigaAngX) {
-        for (int i = antigaAngX; i < novaAngX; i++) {
-            servomotorelo
-            1. write(i);
+    if (novaAngX > atualAngX) {
+        for (int i = atualAngX; i < novaAngX; i++) {
+            servomotorelo1.write(i);
             delay(1000 / velocidade_xy);
         }
-    } else if (novaAngX < antigaAngX) {
-        for (int i = antigaAngX; i > novaAngX; i--) {
-            servomotorelo
-            1. write(i);
+    } else if (novaAngX < atualAngX) {
+        for (int i = atualAngX; i > novaAngX; i--) {
+            servomotorelo1.write(i);
             delay(1000 / velocidade_xy);
         }
     }
-    if (novaAngY > antigaAngY) {
-        for (int i = antigaAngY; i < novaAngY; i++) {
+    if (novaAngY > atualAngY) {
+        for (int i = atualAngY; i < novaAngY; i++) {
             servomotorelo2.write(i);
             delay(1000 / velocidade_xy);
         }
-    } else if (novaAngY < antigaAngY) {
-        for (int i = antigaAngY; i > novaAngY; i--) {
+    } else if (novaAngY < atualAngY) {
+        for (int i = atualAngY; i > novaAngY; i--) {
             servomotorelo2.write(i);
             delay(1000 / velocidade_xy);
         }
@@ -191,33 +211,37 @@ void lidando_com_x_y(int x, int y, int z) {
 
     // se a nova posição do eixo Z for menor
     if (novaPosZ < atualPosZ) {
-        move_motorpasso(ABS(quantPassosZ));
+        Serial.println("Movendo motor de passo.");
+        move_motorpasso(abs(quantPassosZ));
     }
+    Serial.println("Movimento concluído.");
 
     // Informa na serial em uma linha só
     Serial.print("X: de " + String(x) + " para " + String(novaAngX) + " | Y: de " + String(y) + " para " + String(novaAngY));
     Serial.println();
 
     // Atualiza os valores antigos
-    antigaAngX = novaAngX;
-    antigaAngY = novaAngY;
+    atualAngX = novaAngX;
+    atualAngY = novaAngY;
 }
 
 void garra(int abreoufecha) {
     if (abreoufecha == 1) {
         servomotorgarra.write(0);
+        Serial.println("Garra aberta.");
     } else if (abreoufecha == 0) {
         servomotorgarra.write(180);
+        Serial.println("Garra fechada.");
     }
 }
 
 void setup() {
     // Define os pinos como saída
-    pinMode(IN1, OUTPUT);
-    pinMode(IN2, OUTPUT);
-    pinMode(IN3, OUTPUT);
-    pinMode(IN4, OUTPUT);
-    pinMode(IbarraO, INPUT);
+    pinMode(s0, OUTPUT);
+    pinMode(s1, OUTPUT);
+    pinMode(s2, OUTPUT);
+    pinMode(s3, OUTPUT);
+    pinMode(out, INPUT);
 
     // Inicia a comunicação serial
     Serial.begin(9600);
@@ -228,6 +252,8 @@ void setup() {
     servomotorelo1.attach(pinoServoMotorElo1);
     servomotorelo2.attach(pinoServoMotorElo2);
     servomotorgarra.attach(pinoServoMotorGarra);
+
+    Serial.println("Setup concluido.");
 }
 
 void loop() {
@@ -236,11 +262,12 @@ void loop() {
     // manda o motor pegar a peça na área do sensor e levar para um destino
     // os destinos são diferentes para as duas cores
     // sobe o motor e volta para o ponto inicial
-
+    Serial.println("Loop iniciado.");
     // se o interruptor estiver ligado
-    if (/*digitalRead(IbarraO)*/ 1 == 1) {
+    if ( /*digitalRead(IbarraO)*/ 1 == 1) {
         // se detectar azul ou vermelho
-        if detectacores() == 'a' || detectacores() == 'v' {
+        if (detecta_cores() == 'a' || detecta_cores() == 'v') {
+            Serial.println("Uma cor foi detectada.");
             // abre a garra
             garra(0);
             // leva o braço até o ponto do sensor
@@ -248,36 +275,19 @@ void loop() {
             // fecha a garra
             garra(1);
             // leva o braço até o ponto de destino
-            if (detectacores() == 'a') {
+            if (detecta_cores() == 'a') {
                 lidando_com_x_y(0, 0, 0);
-            } else if (detectacores() == 'v') {
+                Serial.println("Peça azul jogada na caixa.");
+            } else if (detecta_cores() == 'v') {
                 lidando_com_x_y(0, 200, 0);
+                Serial.println("Peça vermelha jogada na caixa.");
             }
             // abre a garra
             garra(0);
+            Serial.println("Ciclo concluído.");
             // sobe o braço
             lidando_com_x_y(100, 100, 200);
-
+            Serial.println("Braço em um ponto neutro.");
         }
-    }        
-}
-
-// Função para cuspir informações na serial
-void informa_serial(int IbarraO, int contador, int sentido, int velocidade) {
-    Serial.print("IbarraO: ");
-    Serial.print(IbarraO);
-    Serial.print(" | contador: ");
-    Serial.print(contador);
-    Serial.print(" | sentido: ");
-    Serial.print(sentido);
-    Serial.print(" | velocidade: ");
-    Serial.println(velocidade);
-    Serial.print(digitalRead(IN1));
-    Serial.print(" | ");
-    Serial.print(digitalRead(IN2));
-    Serial.print(" | ");
-    Serial.print(digitalRead(IN3));
-    Serial.print(" | ");
-    Serial.print(digitalRead(IN4));
-    Serial.println();
+    }
 }
