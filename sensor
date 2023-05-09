@@ -75,6 +75,7 @@ char detecta_cores() {
     int green = 0;
     int blue = 0;
     char retorno = "x";
+    Serial.println("Detectando cor...");
     while (retorno != "y" && digitalRead(IbarraO) == HIGH) {
         //Rotina que le o valor das cores  
         digitalWrite(s2, LOW);
@@ -91,10 +92,12 @@ char detecta_cores() {
         //Verifica se a cor vermelha foi detectada  
         if (red < blue && red < green && red < 100) {
             retorno = "v";
+            Serial.println("Vermelho detectado");
         }
         //Verifica se a cor azul foi detectada  
         else if (blue < red && blue < green) {
             retorno = "a";
+            Serial.println("Azul detectado");
         }
         //Verifica se a cor verde foi detectada  
         else if (green < red && green < blue) {
@@ -102,6 +105,7 @@ char detecta_cores() {
         }
         return retorno;
     }
+    Serial.println("Saindo da deteccao de cor...");
 }
 
 // Função que calcula o ângulo de cada motor
@@ -157,7 +161,11 @@ int sistema_z(int diff_z) {
 // Função para movimentar todos os eixos para uma
 // determinada posição x, y e z tendo como base a posição atual (antiga)
 void lidando_com_x_y(int x, int y, int z) {
+    Serial.println("Movendo garra para a posição: " + String(x) + ", " + String(y) + ", " + String(z));
+
     sistema_coordenadas(x, y);
+
+    Serial.println("Ângulos definidos.");
 
     // nova posição do eixo Z
     novaPosZ = z;
@@ -165,15 +173,18 @@ void lidando_com_x_y(int x, int y, int z) {
 
     if (novaPosZ < atualPosZ) {
         sentidoZ = 1;
+        Serial.println("Desce.");
     } else if (novaPosZ > atualPosZ) {
         sentidoZ = 0;
+        Serial.println("Sobe.");
     }
 
     // se a nova posição do eixo Z for maior
     if (novaPosZ > atualPosZ) {
+        Serial.println("Movendo motor de passo.");
         move_motorpasso(abs(quantPassosZ));
     }
-
+    Serial.println("Movendo motores servo grandes.");
     // movimentação eixo x e y
     if (novaAngX > atualAngX) {
         for (int i = atualAngX; i < novaAngX; i++) {
@@ -200,8 +211,10 @@ void lidando_com_x_y(int x, int y, int z) {
 
     // se a nova posição do eixo Z for menor
     if (novaPosZ < atualPosZ) {
+        Serial.println("Movendo motor de passo.");
         move_motorpasso(abs(quantPassosZ));
     }
+    Serial.println("Movimento concluído.");
 
     // Informa na serial em uma linha só
     Serial.print("X: de " + String(x) + " para " + String(novaAngX) + " | Y: de " + String(y) + " para " + String(novaAngY));
@@ -215,8 +228,10 @@ void lidando_com_x_y(int x, int y, int z) {
 void garra(int abreoufecha) {
     if (abreoufecha == 1) {
         servomotorgarra.write(0);
+        Serial.println("Garra aberta.");
     } else if (abreoufecha == 0) {
         servomotorgarra.write(180);
+        Serial.println("Garra fechada.");
     }
 }
 
@@ -237,6 +252,8 @@ void setup() {
     servomotorelo1.attach(pinoServoMotorElo1);
     servomotorelo2.attach(pinoServoMotorElo2);
     servomotorgarra.attach(pinoServoMotorGarra);
+
+    Serial.println("Setup concluido.");
 }
 
 void loop() {
@@ -245,11 +262,12 @@ void loop() {
     // manda o motor pegar a peça na área do sensor e levar para um destino
     // os destinos são diferentes para as duas cores
     // sobe o motor e volta para o ponto inicial
-
+    Serial.println("Loop iniciado.");
     // se o interruptor estiver ligado
     if ( /*digitalRead(IbarraO)*/ 1 == 1) {
         // se detectar azul ou vermelho
         if (detecta_cores() == 'a' || detecta_cores() == 'v') {
+            Serial.println("Uma cor foi detectada.");
             // abre a garra
             garra(0);
             // leva o braço até o ponto do sensor
@@ -259,14 +277,17 @@ void loop() {
             // leva o braço até o ponto de destino
             if (detecta_cores() == 'a') {
                 lidando_com_x_y(0, 0, 0);
+                Serial.println("Peça azul jogada na caixa.");
             } else if (detecta_cores() == 'v') {
                 lidando_com_x_y(0, 200, 0);
+                Serial.println("Peça vermelha jogada na caixa.");
             }
             // abre a garra
             garra(0);
+            Serial.println("Ciclo concluído.");
             // sobe o braço
             lidando_com_x_y(100, 100, 200);
-
+            Serial.println("Braço em um ponto neutro.");
         }
     }
 }
